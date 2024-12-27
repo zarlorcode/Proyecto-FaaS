@@ -1,0 +1,13 @@
+apisix:
+  node_listen: 9080                # Puerto HTTP
+  enable_admin: true               # Habilitar la API de administración
+  allow_admin:
+    - 0.0.0.0/0                    # Permitir todas las IPs
+  admin_key:
+    - name: "admin"
+      key: "admin"    # Clave de API para administrar APISIX
+      role: admin
+
+etcd:
+  host:
+    - "http://etcd:2379"           # Dirección de etcd
