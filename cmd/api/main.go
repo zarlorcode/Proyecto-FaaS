@@ -35,7 +35,7 @@ func main() {
     auth.POST("/functions/deregister", functionHandler.DeregisterFunction)
     auth.POST("/functions/activate", functionHandler.ActivateFunction)
 
-
-    log.Println("Servidor iniciado en http://localhost:8080")
-    router.Run(":8080")
+	// Iniciar servidor
+	log.Println("Servidor iniciado en http://localhost:8080")
+	router.Run(":8080")
 }

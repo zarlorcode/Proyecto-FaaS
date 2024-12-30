@@ -2,10 +2,12 @@ package database
 
 import (
     "github.com/nats-io/nats.go"
+    "time"
 )
 
 func ConnectNATS() (nats.KeyValue, error) {
-    nc, err := nats.Connect(nats.DefaultURL)
+    time.Sleep(5*time.Second)
+    nc, err := nats.Connect("nats://nats:4222")
     if err != nil {
         return nil, err
     }
