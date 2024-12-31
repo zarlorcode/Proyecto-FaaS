@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"github.com/nats-io/nats.go"
     "fmt"
     "bytes"
@@ -69,18 +68,3 @@ func (s *UserService) RegisterUser(username, password string) error {
 	return nil
 }
 
-// Método para autenticar usuarios
-func (s *UserService) AuthenticateUser(username, password string) error {
-	// Verificar si el usuario existe
-	value, err := s.KV.Get(username)
-	if err != nil {
-		return errors.New("usuario no encontrado")
-	}
-
-	// Verificar contraseña
-	if string(value.Value()) != password {
-		return errors.New("contraseña incorrecta")
-	}
-
-	return nil
-}

@@ -26,14 +26,9 @@ func main() {
     
     // Rutas públicas
 	router.POST("/register", userHandler.RegisterUser)
-	router.POST("/login", userHandler.LoginUser)
-    
-    // Rutas protegidas
-	auth := router.Group("/")
-	auth.Use(handlers.AuthMiddleware())
-	auth.POST("/functions/register", functionHandler.RegisterFunction)
-    auth.POST("/functions/deregister", functionHandler.DeregisterFunction)
-    auth.POST("/functions/activate", functionHandler.ActivateFunction)
+	router.POST("/functions/register", functionHandler.RegisterFunction)
+    router.POST("/functions/deregister", functionHandler.DeregisterFunction)
+    router.POST("/functions/activate", functionHandler.ActivateFunction)
 
 	// Iniciar servidor
 	log.Println("Servidor iniciado en http://localhost:8080")

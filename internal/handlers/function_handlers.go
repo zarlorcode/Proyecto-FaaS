@@ -28,10 +28,11 @@ func (h *FunctionHandler) RegisterFunction(c *gin.Context) {
 	}
 
 	// Obtener el usuario desde el contexto
-	username, _ := c.Get("username")
+	// Obtén las credenciales del encabezado de Basic Auth
+    username,_,_ := c.Request.BasicAuth()
 
 	// Registrar la función
-	err := h.Service.RegisterFunction(username.(string), req.FunctionName, req.DockerImage)
+	err := h.Service.RegisterFunction(username, req.FunctionName, req.DockerImage)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error()})
 		return
@@ -52,10 +53,10 @@ func (h *FunctionHandler) DeregisterFunction(c *gin.Context) {
 	}
 
 	// Obtener el usuario desde el contexto
-	username, _ := c.Get("username")
-
+	username,_,_ := c.Request.BasicAuth()
+    
 	// Intentar eliminar la función
-	err := h.Service.DeleteFunction(username.(string), req.FunctionName)
+	err := h.Service.DeleteFunction(username, req.FunctionName)
 	if err != nil {
 		if err.Error() == "función no encontrada" || err.Error() == "la función no pertenece a este usuario" {
 			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error()})
@@ -80,10 +81,10 @@ func (h *FunctionHandler) ActivateFunction(c *gin.Context) {
 		return
 	}
 
-	username, _ := c.Get("username")
+	username,_,_ := c.Request.BasicAuth()
 
 	// Intentar activar la función
-	result, err := h.Service.ActivateFunction(username.(string), req.FunctionName, req.Parameter)
+	result, err := h.Service.ActivateFunction(username, req.FunctionName, req.Parameter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return

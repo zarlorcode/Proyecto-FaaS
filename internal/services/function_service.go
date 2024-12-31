@@ -30,7 +30,7 @@ func NewFunctionService(kv nats.KeyValue) *FunctionService {
 func (s *FunctionService) RegisterFunction(username, functionName, dockerImage string) error {
     // Usar un formato de clave válido
     key := fmt.Sprintf("%s/%s", username, functionName)
-
+    fmt.Println("El username ", username ," ha REGISTRADO la función ", functionName )
     // Verificar si la función ya existe
     _, err := s.KV.Get(key)
     if err == nil {
@@ -49,7 +49,8 @@ func (s *FunctionService) RegisterFunction(username, functionName, dockerImage s
 func (s *FunctionService) DeleteFunction(username, functionName string) error {
 	// Construir la clave de la función
 	key := fmt.Sprintf("%s/%s", username, functionName)
-
+    fmt.Println("El username ", username ," ha ELIMINADO la función ", functionName )
+    
 	// Intentar obtener la función
 	value, err := s.KV.Get(key)
 	if err != nil {
@@ -78,6 +79,8 @@ func (s *FunctionService) DeleteFunction(username, functionName string) error {
 func (s *FunctionService) ActivateFunction(username, functionName, parameter string) (string, error) {
 	// Buscar la clave de la función
 	key := fmt.Sprintf("%s/%s", username, functionName)
+    fmt.Println("El username ", username ," ha ACTIVADO la función ", functionName )
+    
 	value, err := s.KV.Get(key)
 	if err != nil {
 		return "", errors.New("función no encontrada")
