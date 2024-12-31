@@ -25,13 +25,15 @@ func NewUserHandler(service *services.UserService) *UserHandler {
 
 // Endpoint para registrar usuarios
 func (h *UserHandler) RegisterUser(c *gin.Context) {
-    var user models.User
-    if err := c.ShouldBindJSON(&user); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Datos inválidos"})
+    // Obtén las credenciales del encabezado de Basic Auth
+    username, password, ok := c.Request.BasicAuth()
+    if !ok {
+        c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Credenciales no proporcionadas o inválidas"})
         return
     }
 
-    if err := h.Service.RegisterUser(user.Username, user.Password); err != nil {
+    // Llama al servicio para registrar al usuario
+    if err := h.Service.RegisterUser(username, password); err != nil {
         c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error()})
         return
     }

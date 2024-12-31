@@ -19,6 +19,7 @@ version: "3"
 
 services:
   apisix:
+    container_name: apisix
     image: apache/apisix:${APISIX_IMAGE_TAG:-3.11.0-debian}
     restart: always
     volumes:
