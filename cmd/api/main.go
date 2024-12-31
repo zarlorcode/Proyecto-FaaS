@@ -10,7 +10,7 @@ import (
 
 func main() {
     // Configurar conexión con NATS
-    kv, err := database.ConnectNATS()
+    kv, js, err := database.ConnectNATS()
     if err != nil {
         log.Fatalf("Error conectando a NATS: %v", err)
     }
@@ -18,7 +18,8 @@ func main() {
     // Inicializar servicio y controlador
     userService := services.NewUserService(kv)
     userHandler := handlers.NewUserHandler(userService)
-    functionService := services.NewFunctionService(kv)
+    
+    functionService := services.NewFunctionService(kv,js)
 	functionHandler := handlers.NewFunctionHandler(functionService)
 
     // Configurar router

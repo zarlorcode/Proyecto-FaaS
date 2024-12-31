@@ -1,14 +1,15 @@
 package services
 
 import (
-    "bytes"
-	"context"
+    //"bytes"
+	//"context"
 	"errors"
 	"fmt"
-	"os/exec"
+	//"os/exec"
 	"time"
 
 	"github.com/nats-io/nats.go"
+    "github.com/google/uuid" 
 )
 
 // Límite de concurrencia
@@ -17,13 +18,18 @@ var maxConcurrentActivations = 5
 // Canal para manejar concurrencia
 var sem = make(chan struct{}, maxConcurrentActivations) 
 
+// FunctionService es el servicio que maneja las funciones
 type FunctionService struct {
-	KV nats.KeyValue
+	KV        nats.KeyValue
+	JetStream nats.JetStreamContext
 }
 
-// Nueva instancia del servicio
-func NewFunctionService(kv nats.KeyValue) *FunctionService {
-	return &FunctionService{KV: kv}
+// NewFunctionService crea una nueva instancia de FunctionService
+func NewFunctionService(kv nats.KeyValue, js nats.JetStreamContext) *FunctionService {
+	return &FunctionService{
+		KV:        kv,
+		JetStream: js,
+	}
 }
 
 // Registrar una función
@@ -38,7 +44,7 @@ func (s *FunctionService) RegisterFunction(username, functionName, dockerImage s
     }
 
     // Registrar la función
-    _, err = s.KV.Put(key, []byte(dockerImage))
+    _, err = s.KV.PutString(key,dockerImage)
     if err != nil {
         return err
     }
@@ -77,6 +83,44 @@ func (s *FunctionService) DeleteFunction(username, functionName string) error {
 
 // Activar una función con control de concurrencia
 func (s *FunctionService) ActivateFunction(username, functionName, parameter string) (string, error) {
+    // Generar un ID único para esta petición
+    requestID := uuid.NewString()
+    
+    key := fmt.Sprintf("%s/%s", username, functionName)
+    dockerImage, _ := s.KV.Get(key)
+    
+    fmt.Println(dockerImage.Value())
+    
+    // Construir el mensaje
+    message := fmt.Sprintf("%s|%s|%s", username, dockerImage.Value(), parameter)
+    
+    // Publicar el mensaje en el stream "activations"
+    _, err := s.JetStream.Publish("activations."+ requestID, []byte(message))
+    if err != nil {
+        return "", fmt.Errorf("error enviando activación: %s", err)
+    }
+    
+    // Configurar un suscriptor para escuchar el resultado en "results.<username>"
+    subject := "results." + requestID
+    sub, err := s.JetStream.SubscribeSync(subject)
+    if err != nil {
+        return "", fmt.Errorf("error suscribiéndose al stream de resultados: %s", err)
+    }
+    defer sub.Unsubscribe() // Asegurarse de cerrar la suscripción al final
+    
+    // Esperar el mensaje de resultado
+    timeout := 10 * time.Second // Tiempo máximo de espera para el resultado
+    msg, err := sub.NextMsg(timeout)
+    if err != nil {
+        return "", fmt.Errorf("error esperando el resultado: %s", err)
+    }
+
+    // Procesar el mensaje recibido
+    result := string(msg.Data) // Convertir los datos a string para el retorno
+    return result, nil
+}
+
+/*func (s *FunctionService) ActivateFunction(username, functionName, parameter string) (string, error) {
 	// Buscar la clave de la función
 	key := fmt.Sprintf("%s/%s", username, functionName)
     fmt.Println("El username ", username ," ha ACTIVADO la función ", functionName )
@@ -118,7 +162,7 @@ func (s *FunctionService) ActivateFunction(username, functionName, parameter str
 
 	// Retornar el resultado de stdout
 	return out.String(), nil
-}
+}*/
 
 // Activar una función SIN CONCURRENCIA
 /*func (s *FunctionService) ActivateFunction(username, functionName, parameter string) (string, error) {

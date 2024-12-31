@@ -82,7 +82,7 @@ func (h *FunctionHandler) ActivateFunction(c *gin.Context) {
 	}
 
 	username,_,_ := c.Request.BasicAuth()
-
+    
 	// Intentar activar la función
 	result, err := h.Service.ActivateFunction(username, req.FunctionName, req.Parameter)
 	if err != nil {
