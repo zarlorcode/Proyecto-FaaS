@@ -6,7 +6,6 @@ import (
 	"log"
 	"os/exec"
 	"strings"
-
 	"github.com/nats-io/nats.go"
 )
 
@@ -29,6 +28,7 @@ func main() {
 
 	// Suscribirse al tema "activations.*"
 	sub, err := js.Subscribe("activations.*", func(msg *nats.Msg) {
+        defer msg.Ack() // Confirmar el mensaje para eliminarlo
 		data := strings.Split(string(msg.Data), "|")
 		if len(data) != 3 {
 			log.Println("Error: Formato de mensaje inválido")
@@ -52,7 +52,7 @@ func main() {
 		// Publicar el resultado en "results"
 		js.Publish("results."+requestId[1], []byte(result))
 		log.Printf("Resultado enviado para %s\n", username)
-	})
+	}, nats.ManualAck()) // Habilitar acknowledgments manuales
 
 	if err != nil {
 		log.Fatalf("Error suscribiéndose a activations: %v", err)
@@ -68,6 +68,7 @@ func createStreams(js nats.JetStreamContext) {
 	_, err := js.AddStream(&nats.StreamConfig{
 		Name:     "activations",         // Nombre del stream
 		Subjects: []string{"activations.*"}, // Temas relacionados
+        Retention: nats.WorkQueuePolicy, // Elimina mensajes después de ser procesados
 		Storage:  nats.FileStorage,     // Almacenamiento en disco
 	})
 	if err != nil && err != nats.ErrStreamNameAlreadyInUse {
