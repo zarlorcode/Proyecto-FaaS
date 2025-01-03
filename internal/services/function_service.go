@@ -83,19 +83,31 @@ func (s *FunctionService) DeleteFunction(username, functionName string) error {
 
 // Activar una función con control de concurrencia
 func (s *FunctionService) ActivateFunction(username, functionName, parameter string) (string, error) {
+    // Construir la clave de la función
+    key := fmt.Sprintf("%s/%s", username, functionName)
+    
+    // Verificar si la función existe
+    value, err := s.KV.Get(key)
+    if err != nil {
+        if err == nats.ErrKeyNotFound {
+            return "", errors.New("función no encontrada")
+        }
+        return "", fmt.Errorf("error al buscar la función: %s", err)
+    }
+
+    // Verificar que la función pertenece al usuario
+    if string(value.Value()) == "" {
+        return "", errors.New("la función no pertenece a este usuario")
+    }
+
     // Generar un ID único para esta petición
     requestID := uuid.NewString()
-    
-    key := fmt.Sprintf("%s/%s", username, functionName)
-    dockerImage, _ := s.KV.Get(key)
-    
-    fmt.Println(dockerImage.Value())
-    
+
     // Construir el mensaje
-    message := fmt.Sprintf("%s|%s|%s", username, dockerImage.Value(), parameter)
+    message := fmt.Sprintf("%s|%s|%s", username, value.Value(), parameter)
     
     // Publicar el mensaje en el stream "activations"
-    _, err := s.JetStream.Publish("activations."+ requestID, []byte(message))
+    _, err = s.JetStream.Publish("activations."+requestID, []byte(message))
     if err != nil {
         return "", fmt.Errorf("error enviando activación: %s", err)
     }

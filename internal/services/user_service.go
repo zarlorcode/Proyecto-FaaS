@@ -5,7 +5,6 @@ import (
     "fmt"
     "bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -59,9 +58,8 @@ func (s *UserService) RegisterUser(username, password string) error {
 	defer resp.Body.Close()
 
 	// Check the response status
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("El usuario ya existe")
 	}
 
 	fmt.Println("Consumer created successfully")

@@ -29,8 +29,8 @@ func (h *FunctionHandler) RegisterFunction(c *gin.Context) {
 
 	// Obtener el usuario desde el contexto
 	// Obtén las credenciales del encabezado de Basic Auth
-    username,_,_ := c.Request.BasicAuth()
-
+    username, _, _ := c.Request.BasicAuth()
+    
 	// Registrar la función
 	err := h.Service.RegisterFunction(username, req.FunctionName, req.DockerImage)
 	if err != nil {
@@ -38,7 +38,7 @@ func (h *FunctionHandler) RegisterFunction(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Función registrada exitosamente"})
+	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Función registrada exitosamente"})
 }
 
 //Endpoint para eliminar funciones
@@ -53,7 +53,8 @@ func (h *FunctionHandler) DeregisterFunction(c *gin.Context) {
 	}
 
 	// Obtener el usuario desde el contexto
-	username,_,_ := c.Request.BasicAuth()
+	username, _, _ := c.Request.BasicAuth()
+    
     
 	// Intentar eliminar la función
 	err := h.Service.DeleteFunction(username, req.FunctionName)
@@ -71,26 +72,31 @@ func (h *FunctionHandler) DeregisterFunction(c *gin.Context) {
 
 // Endpoint para activar funciones
 func (h *FunctionHandler) ActivateFunction(c *gin.Context) {
-	var req struct {
-		FunctionName string `json:"functionName"`
-		Parameter    string `json:"parameter"`
-	}
+    var req struct {
+        FunctionName string `json:"functionName"`
+        Parameter    string `json:"parameter"`
+    }
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Datos inválidos"})
-		return
-	}
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Datos inválidos"})
+        return
+    }
 
-	username,_,_ := c.Request.BasicAuth()
+    username, _, _ := c.Request.BasicAuth()
+
     
-	// Intentar activar la función
-	result, err := h.Service.ActivateFunction(username, req.FunctionName, req.Parameter)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
-		return
-	}
+    // Intentar activar la función
+    result, err := h.Service.ActivateFunction(username, req.FunctionName, req.Parameter)
+    if err != nil {
+        if err.Error() == "función no encontrada" || err.Error() == "la función no pertenece a este usuario" {
+            c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error()})
+        } else {
+            c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+        }
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "result": result})
+    c.JSON(http.StatusOK, gin.H{"status": "success", "result": result})
 }
 
 // Endpoint para activar funciones SIN CONCURRENCIA
