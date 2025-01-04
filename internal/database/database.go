@@ -4,18 +4,34 @@ import (
     "github.com/nats-io/nats.go"
     "time"
     "log"
+    "errors"
 )
 
 func ConnectNATS() (nats.KeyValue,nats.JetStreamContext, error) {
     
-    // Esperar unos segundos para asegurar que NATS esté disponible
-    time.Sleep(5*time.Second)
-    
-    // Conectar a NATS
-    nc, err := nats.Connect("nats://nats:4222")
-    if err != nil {
-        return nil, nil, err
+    //Logica de reintento para esperar a que nats esté disponible
+    var nc *nats.Conn
+    var err error
+
+    maxRetries := 10              // Número máximo de reintentos
+    retryInterval := 2 * time.Second // Intervalo entre reintentos
+
+    for i := 1; i <= maxRetries; i++ {
+        nc, err = nats.Connect("nats://nats:4222")
+        if err == nil {
+            break // Conexión exitosa
+        }
+
+        log.Printf("Intento %d de %d: no se pudo conectar a NATS. Error: %v", i, maxRetries, err)
+        time.Sleep(retryInterval) // Esperar antes del próximo intento
     }
+
+    if err != nil {
+        return nil, nil, errors.New("no se pudo conectar a NATS después de múltiples intentos")
+    }
+
+    log.Println("Conexión exitosa a NATS")
+    //FIN DE LA CONEXIÓN CON NATS
     
     // Inicializar JetStream
     js, err := nc.JetStream()
