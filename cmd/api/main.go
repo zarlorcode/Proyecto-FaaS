@@ -14,7 +14,7 @@ func main() {
     if err != nil {
         log.Fatalf("Error conectando a NATS: %v", err)
     }
-
+	
     // Inicializar servicio y controlador
     userService := services.NewUserService(kv)
     userHandler := handlers.NewUserHandler(userService)

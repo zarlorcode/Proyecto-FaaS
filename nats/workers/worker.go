@@ -1,5 +1,4 @@
 package main
-
 import (
 	"bytes"
 	"fmt"
@@ -7,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"github.com/nats-io/nats.go"
+    "github.com/google/uuid" 
 )
 
 func main() {
@@ -25,9 +25,12 @@ func main() {
 
 	// Crear Streams (activations y results)
 	createStreams(js)
-
+    
+    // Generar un ID único para este worker
+    workerID := "worker-" + uuid.NewString()
+    
 	// Suscribirse al tema "activations.*"
-	sub, err := js.Subscribe("activations.*", func(msg *nats.Msg) {
+	sub, err := js.QueueSubscribe("activations.*","worker-group",func(msg *nats.Msg) {
         defer msg.Ack() // Confirmar el mensaje para eliminarlo
 		data := strings.Split(string(msg.Data), "|")
 		if len(data) != 3 {
@@ -52,7 +55,8 @@ func main() {
 		// Publicar el resultado en "results"
 		js.Publish("results."+requestId[1], []byte(result))
 		log.Printf("Resultado enviado para %s\n", username)
-	}, nats.ManualAck()) // Habilitar acknowledgments manuales
+	}, nats.ManualAck(), nats.Durable(workerID)) // Habilitar acknowledgments manuales y Nombre único por worker
+
 
 	if err != nil {
 		log.Fatalf("Error suscribiéndose a activations: %v", err)
