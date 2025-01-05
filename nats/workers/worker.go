@@ -4,11 +4,66 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"strings"
+	//"strings"
+    "os"
+    "os/signal"
 	"github.com/nats-io/nats.go"
-    "github.com/google/uuid" 
+    //"github.com/google/uuid" 
+    "context"
+    "time"
+    "github.com/nats-io/nats.go/jetstream"
 )
 
+func main() {
+    // Configurar el nombre del Worker
+    idWorker:= os.Args[1]
+	workerName := fmt.Sprintf("worker_%s",idWorker)
+    
+    // Conectarse a NATS
+	nc, err := nats.Connect("nats://localhost:4222")
+	if err != nil {
+		log.Fatalf("Error conectando a NATS: %v", err)
+	}
+	defer nc.Close()
+    
+    // Iniciar contexto JetStream
+	js, err := jetstream.New(nc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	// Crear consumidor (Worker Consumer)
+	consumer, err := js.CreateOrUpdateConsumer(context.Background(), "activations", jetstream.ConsumerConfig{
+		Name:          workerName,
+		Durable:       workerName,
+		MaxDeliver:    5,
+		BackOff:       []time.Duration{5 * time.Second, 10 * time.Second},
+	})
+	if err != nil {
+		log.Fatalf("Error creando el consumidor: %v", err)
+	}
+	
+	// Suscribirse al stream y procesar mensajes
+	sub, err := consumer.Consume(func(msg jetstream.Msg) {
+		// Procesar el mensaje
+		log.Printf("[%s] Procesando mensaje: %s\n", workerName, string(msg.Data()))
+
+		// Simular procesamiento
+		time.Sleep(2 * time.Second) // Simular tiempo de procesamiento
+		msg.Ack()                   // Confirmar mensaje procesado
+        
+	})
+	if err != nil {
+		log.Fatalf("Error suscribiéndose al stream: %v", err)
+	}
+    
+    // Manejar cierre limpio
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	sub.Stop()
+}
+/*
 func main() {
 	// Conectarse a NATS
 	nc, err := nats.Connect("nats://localhost:4222")
@@ -64,7 +119,7 @@ func main() {
 
 	defer sub.Unsubscribe()
 	select {} // Mantener el Worker activo
-}
+}*/
 
 // createStreams se asegura de que los streams "activations" y "results" estén configurados
 func createStreams(js nats.JetStreamContext) {

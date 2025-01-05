@@ -38,7 +38,7 @@ func ConnectNATS() (nats.KeyValue,nats.JetStreamContext, error) {
     if err != nil {
         return nil, nil, err
     }   
-    // Configurar el stream "activations"
+    // Configurar el stream "activations" (Work Queue Stream)
     _, err = js.AddStream(&nats.StreamConfig{
 		Name:     "activations",         // Nombre del stream
 		Subjects: []string{"activations.*"}, // Temas relacionados
