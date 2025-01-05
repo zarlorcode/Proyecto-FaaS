@@ -121,7 +121,7 @@ func (s *FunctionService) ActivateFunction(username, functionName, parameter str
     defer sub.Unsubscribe() // Asegurarse de cerrar la suscripción al final
     
     // Esperar el mensaje de resultado
-    timeout := 10 * time.Second // Tiempo máximo de espera para el resultado
+    timeout := 40 * time.Second // Tiempo máximo de espera para el resultado
     msg, err := sub.NextMsg(timeout)
     if err != nil {
         return "", fmt.Errorf("error esperando el resultado: %s", err)

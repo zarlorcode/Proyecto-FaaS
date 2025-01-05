@@ -8,16 +8,16 @@ import (
     "os"
     "os/signal"
 	"github.com/nats-io/nats.go"
-    //"github.com/google/uuid" 
+    "github.com/google/uuid" 
     "context"
     "time"
     "github.com/nats-io/nats.go/jetstream"
 )
 
 func main() {
-    // Configurar el nombre del Worker
-    idWorker:= os.Args[1]
-	workerName := fmt.Sprintf("worker_%s",idWorker)
+    
+	workerName := "worker"
+    workerMsgsId := "worker_" + uuid.NewString()
     
     // Conectarse a NATS
 	nc, err := nats.Connect("nats://localhost:4222")
@@ -46,8 +46,9 @@ func main() {
 	
 	// Suscribirse al stream y procesar mensajes
 	sub, err := consumer.Consume(func(msg jetstream.Msg) {
+        msg.Ack()  // Confirmar mensaje procesado
 		// Procesar el mensaje
-		log.Printf("[%s] Procesando mensaje: %s\n", workerName, string(msg.Data()))
+		log.Printf("[%s] Procesando mensaje: %s\n", workerMsgsId, string(msg.Data()))
         data := strings.Split(string(msg.Data()), "|")
         subject := msg.Subject()
 		requestId := strings.Split(subject, ".")
@@ -56,13 +57,12 @@ func main() {
 		log.Printf("Procesando activación: Usuario=%s, Función=%s, Parámetro=%s\n", username, functionName, parameter)
 
 		// Procesar la función
-		result, err := processFunction(functionName, parameter)
+		result, err := processFunction(workerMsgsId, functionName, parameter)
 		if err != nil {
 			log.Printf("Error ejecutando función para %s: %s\n", username, err.Error())
 			js.Publish(ctx,"results."+requestId[1], []byte(fmt.Sprintf("Error para %s: %s", username, err.Error())))
 			return
 		}
-		msg.Ack()  // Confirmar mensaje procesado
         
         // Publicar el resultado en "results"
 		js.Publish(ctx,"results."+requestId[1], []byte(result))
@@ -80,38 +80,10 @@ func main() {
 	sub.Stop()
 }
 
-// createStreams se asegura de que los streams "activations" y "results" estén configurados
-func createStreams(js nats.JetStreamContext) {
-	// Configurar el stream "activations"
-	_, err := js.AddStream(&nats.StreamConfig{
-		Name:     "activations",         // Nombre del stream
-		Subjects: []string{"activations.*"}, // Temas relacionados
-        Retention: nats.WorkQueuePolicy, // Elimina mensajes después de ser procesados
-		Storage:  nats.FileStorage,     // Almacenamiento en disco
-	})
-	if err != nil && err != nats.ErrStreamNameAlreadyInUse {
-		log.Printf("Error creando stream 'activations': %v", err)
-	} else {
-		log.Println("Stream 'activations' configurado")
-	}
-
-	// Configurar el stream "results"
-	_, err = js.AddStream(&nats.StreamConfig{
-		Name:     "results",         // Nombre del stream
-		Subjects: []string{"results.*"}, // Temas relacionados
-		Storage:  nats.FileStorage, // Almacenamiento en disco
-	})
-	if err != nil && err != nats.ErrStreamNameAlreadyInUse {
-		log.Printf("Error creando stream 'results': %v", err)
-	} else {
-		log.Println("Stream 'results' configurado")
-	}
-}
-
 // processFunction ejecuta una función utilizando Docker
-func processFunction(functionName, parameter string) (string, error) {
+func processFunction(workerMsgsId, functionName, parameter string) (string, error) {
 	// Simulación de ejecución con Docker
-    log.Println("Worker PROCESANDO la función ", functionName)
+    log.Printf("[%s] PROCESANDO la función %s", workerMsgsId, functionName)
 	cmd := exec.Command("docker", "run", "--rm", functionName, parameter)
 	var out, stderr bytes.Buffer
 	cmd.Stdout = &out

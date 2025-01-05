@@ -50,6 +50,18 @@ func ConnectNATS() (nats.KeyValue,nats.JetStreamContext, error) {
 	} else {
 		log.Println("Stream 'activations' configurado")
 	}
+	
+    // Configurar el stream "results"
+	_, err = js.AddStream(&nats.StreamConfig{
+		Name:     "results",         // Nombre del stream
+		Subjects: []string{"results.*"}, // Temas relacionados
+		Storage:  nats.FileStorage, // Almacenamiento en disco
+	})
+	if err != nil && err != nats.ErrStreamNameAlreadyInUse {
+		log.Printf("Error creando stream 'results': %v", err)
+	} else {
+		log.Println("Stream 'results' configurado")
+	}
  
     // Configurar el Key-Value "users"
     kv, err := js.KeyValue("users")
