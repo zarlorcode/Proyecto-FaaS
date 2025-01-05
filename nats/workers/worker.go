@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	//"strings"
+	"strings"
     "os"
     "os/signal"
 	"github.com/nats-io/nats.go"
@@ -32,8 +32,9 @@ func main() {
 		log.Fatal(err)
 	}
 	
+	ctx:=context.Background()
 	// Crear consumidor (Worker Consumer)
-	consumer, err := js.CreateOrUpdateConsumer(context.Background(), "activations", jetstream.ConsumerConfig{
+	consumer, err := js.CreateOrUpdateConsumer(ctx, "activations", jetstream.ConsumerConfig{
 		Name:          workerName,
 		Durable:       workerName,
 		MaxDeliver:    5,
@@ -47,10 +48,25 @@ func main() {
 	sub, err := consumer.Consume(func(msg jetstream.Msg) {
 		// Procesar el mensaje
 		log.Printf("[%s] Procesando mensaje: %s\n", workerName, string(msg.Data()))
+        data := strings.Split(string(msg.Data()), "|")
+        subject := msg.Subject()
+		requestId := strings.Split(subject, ".")
 
-		// Simular procesamiento
-		time.Sleep(2 * time.Second) // Simular tiempo de procesamiento
-		msg.Ack()                   // Confirmar mensaje procesado
+		username, functionName, parameter := data[0], data[1], data[2]
+		log.Printf("Procesando activación: Usuario=%s, Función=%s, Parámetro=%s\n", username, functionName, parameter)
+
+		// Procesar la función
+		result, err := processFunction(functionName, parameter)
+		if err != nil {
+			log.Printf("Error ejecutando función para %s: %s\n", username, err.Error())
+			js.Publish(ctx,"results."+requestId[1], []byte(fmt.Sprintf("Error para %s: %s", username, err.Error())))
+			return
+		}
+		msg.Ack()  // Confirmar mensaje procesado
+        
+        // Publicar el resultado en "results"
+		js.Publish(ctx,"results."+requestId[1], []byte(result))
+		log.Printf("Resultado enviado para %s\n", username)
         
 	})
 	if err != nil {
@@ -63,63 +79,6 @@ func main() {
 	<-quit
 	sub.Stop()
 }
-/*
-func main() {
-	// Conectarse a NATS
-	nc, err := nats.Connect("nats://localhost:4222")
-	if err != nil {
-		log.Fatalf("Error conectando a NATS: %v", err)
-	}
-	defer nc.Close()
-
-	// Iniciar contexto JetStream
-	js, err := nc.JetStream()
-	if err != nil {
-		log.Fatalf("Error inicializando JetStream: %v", err)
-	}
-
-	// Crear Streams (activations y results)
-	createStreams(js)
-    
-    // Generar un ID único para este worker
-    workerID := "worker-" + uuid.NewString()
-    
-	// Suscribirse al tema "activations.*"
-	sub, err := js.QueueSubscribe("activations.*","worker-group",func(msg *nats.Msg) {
-        defer msg.Ack() // Confirmar el mensaje para eliminarlo
-		data := strings.Split(string(msg.Data), "|")
-		if len(data) != 3 {
-			log.Println("Error: Formato de mensaje inválido")
-			js.Publish("results", []byte("Error: Formato de mensaje inválido"))
-			return
-		}
-		subject := msg.Subject
-		requestId := strings.Split(subject, ".")
-
-		username, functionName, parameter := data[0], data[1], data[2]
-		log.Printf("Procesando activación: Usuario=%s, Función=%s, Parámetro=%s\n", username, functionName, parameter)
-
-		// Procesar la función
-		result, err := processFunction(functionName, parameter)
-		if err != nil {
-			log.Printf("Error ejecutando función para %s: %s\n", username, err.Error())
-			js.Publish("results."+requestId[1], []byte(fmt.Sprintf("Error para %s: %s", username, err.Error())))
-			return
-		}
-
-		// Publicar el resultado en "results"
-		js.Publish("results."+requestId[1], []byte(result))
-		log.Printf("Resultado enviado para %s\n", username)
-	}, nats.ManualAck(), nats.Durable(workerID)) // Habilitar acknowledgments manuales y Nombre único por worker
-
-
-	if err != nil {
-		log.Fatalf("Error suscribiéndose a activations: %v", err)
-	}
-
-	defer sub.Unsubscribe()
-	select {} // Mantener el Worker activo
-}*/
 
 // createStreams se asegura de que los streams "activations" y "results" estén configurados
 func createStreams(js nats.JetStreamContext) {
