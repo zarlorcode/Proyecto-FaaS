@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"faas-api/internal/services"
 	"github.com/gin-gonic/gin"
+    "fmt"
 )
 
 type FunctionHandler struct {
@@ -95,7 +96,7 @@ func (h *FunctionHandler) ActivateFunction(c *gin.Context) {
         }
         return
     }
-
+    fmt.Printf("Función %s del USUARIO: %s procesada, RESULTADO: %s",req.FunctionName, username, result)
     c.JSON(http.StatusOK, gin.H{"status": "success", "result": result})
 }
 
