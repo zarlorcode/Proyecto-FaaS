@@ -81,8 +81,20 @@ services:
       - ./nats_data:/tmp/nats/jetstream  # Volumen persistente
     networks:
       apisix:
+      
+  worker:
+    image: worker-image
+    build: 
+      context: workers
+      dockerfile: Dockerfile
+    volumes: 
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      apisix:
+
 
 networks:
   apisix:
+    name: apisix
     driver: bridge
 
