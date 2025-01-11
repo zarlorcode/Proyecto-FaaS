@@ -21,11 +21,29 @@ func main() {
     workerMsgsId := "worker_" + uuid.NewString()
     
     // Conectarse a NATS
-	nc, err := nats.Connect("nats://nats:4222")
-	if err != nil {
-		log.Fatalf("Error conectando a NATS: %v", err)
-	}
-	defer nc.Close()
+    //Logica de reintento para esperar a que nats esté disponible
+    var nc *nats.Conn
+    var err error
+
+    maxRetries := 10              // Número máximo de reintentos
+    retryInterval := 2 * time.Second // Intervalo entre reintentos
+
+    for i := 1; i <= maxRetries; i++ {
+        nc, err = nats.Connect("nats://nats:4222")
+        if err == nil {
+            break // Conexión exitosa
+        }
+
+        log.Printf("Intento %d de %d: no se pudo conectar a NATS. Error: %v", i, maxRetries, err)
+        time.Sleep(retryInterval) // Esperar antes del próximo intento
+    }
+    
+    if err != nil {
+        log.Println("no se pudo conectar a NATS después de múltiples intentos")
+        return
+    }
+
+    log.Println("Conexión exitosa a NATS")
     
     // Iniciar contexto JetStream
 	js, err := jetstream.New(nc)
