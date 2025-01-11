@@ -91,7 +91,7 @@ A continuación se pulsa Send.
 Hay que hacer una petición POST a la siguiente url:
 
 ```bash
-    http://localhost:9080/functions/functions/activate
+    http://localhost:9080/functions/activate
 ```
 
 En el apartado Auth nos tenemos que autenticar. Seleccionamos el tipo "Basic Auth" y usamos los credenciales que hemos registrado antes.
