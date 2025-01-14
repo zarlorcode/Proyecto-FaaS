@@ -381,3 +381,62 @@ func processFunction(workerMsgsId, functionName, parameter string) (string, erro
     return out.String(), nil
 }
 
+```
+
+# Resumen de Preguntas Clave Resueltas
+
+## 1. ¿Cómo se implementa la arquitectura de microservicios?
+El sistema se organiza en una arquitectura de microservicios compuesta por los siguientes componentes:
+- **APISIX:** Un proxy inverso que gestiona la entrada de solicitudes API y autentica usuarios.
+- **NATS:** Un sistema de mensajería que conecta los componentes de manera asincrónica.
+- **API Server:** El núcleo lógico que coordina las operaciones del sistema.
+- **Workers:** Procesan las funciones registradas ejecutándolas en contenedores Docker.
+
+## 2. ¿Cómo realizan los Workers su trabajo?
+- Los Workers consumen mensajes del stream `activations` en NATS, que contienen los detalles de las solicitudes.
+- Ejecutan funciones en contenedores Docker, procesando un único parámetro de entrada y capturando el resultado de la ejecución.
+- Publican los resultados en el stream `results` para que el servidor de la API pueda enviarlos al usuario.
+
+## 3. ¿Cómo se escalan los Workers?
+- Los Workers pueden escalarse horizontalmente añadiendo más instancias. Esto se puede hacer al iniciar el sistema con `--scale worker=N` en Docker Compose o lanzándolos manualmente con un comando de Docker.
+- El uso de NATS como sistema de mensajería asegura que los nuevos Workers se integren automáticamente y comiencen a procesar tareas pendientes.
+
+## 4. ¿Cómo escala la base de datos?
+- La base de datos se implementa utilizando el almacenamiento de clave-valor de NATS (JetStream). Esto permite que los datos se distribuyan y repliquen en entornos de alta disponibilidad.
+- NATS garantiza que las claves estén disponibles de manera eficiente incluso bajo alta carga.
+
+## 5. ¿Cómo se configura el sistema para adaptarse a cambios en la carga?
+- **Workers:** Se pueden añadir o quitar dinámicamente para manejar incrementos o disminuciones en la carga de trabajo.
+- **Streams en NATS:** JetStream maneja colas y persistencia de mensajes, lo que permite absorber picos de solicitudes.
+- **APISIX:** Configurable para manejar el equilibrio de carga y proporcionar autenticación segura.
+
+## 6. ¿Cómo se gestiona el acceso a servicios externos en la implementación?
+- Cada función registrada hace referencia a una imagen de Docker personalizada que se ejecuta en un contenedor aislado. 
+- Los Workers son responsables de configurar y ejecutar estas imágenes de forma segura, sin exponer información sensible ni requerir acceso directo a los servicios externos desde el sistema central.
+
+## 7. ¿Qué ventajas y limitaciones presenta el sistema?
+### Ventajas:
+- **Escalabilidad:** Los componentes del sistema, como los Workers y NATS, son altamente escalables.
+- **Modularidad:** La arquitectura basada en microservicios permite un mantenimiento y desarrollo más simples.
+- **Eficiencia:** La eliminación de contenedores tras la ejecución asegura un uso óptimo de los recursos.
+### Limitaciones:
+- **Latencia:** La comunicación asincrónica y la creación de contenedores puede introducir retrasos en comparación con soluciones sin contenedores.
+- **Complejidad Operativa:** Requiere experiencia en orquestación de contenedores y configuración de sistemas distribuidos.
+
+## 8. ¿Qué datos adicionales podrían incluirse en las cadenas codificadas?
+- **Timestamp de creación de la solicitud:** Para facilitar el monitoreo y diagnóstico de problemas.
+- **Identificador de región o servidor:** Para implementar estrategias de despliegue multi-región.
+- **Metadatos de la función:** Por ejemplo, la versión de la función o parámetros de configuración adicionales.
+
+## 9. ¿Algún otro aspecto importante?
+- **Seguridad:** El uso de contenedores garantiza un entorno aislado para ejecutar las funciones, minimizando riesgos de seguridad.
+- **Monitoreo:** El sistema puede mejorarse añadiendo herramientas de monitoreo como Prometheus para supervisar el rendimiento de los componentes.
+- **Timeouts configurables:** Los tiempos de espera son críticos para evitar que las solicitudes queden pendientes indefinidamente.
+
+## 10. Comparación con otros sistemas FaaS de código abierto 
+| Característica            | Este Sistema          | OpenFaaS                  | Knative                    |
+|---------------------------|-----------------------|---------------------------|----------------------------|
+| Escalabilidad             | Manual/Docker Compose| Automática mediante K8s   | Automática mediante K8s    |
+| Almacenamiento de Estado  | NATS (JetStream)      | Configurable (DB/Filesystem)| Configurable (DB/Filesystem)|
+| Complejidad de Configuración | Moderada             | Alta                      | Muy Alta                  |
+| Recursos por ejecución    | Docker (por función)  | Docker (por función)      | Kubernetes Pod            |
